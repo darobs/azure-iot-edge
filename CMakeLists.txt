@@ -39,6 +39,13 @@ function(add_module_to_solution undecoratedModuleName)
     set_target_properties(${undecoratedModuleName}_hl_static
         PROPERTIES FOLDER "Modules/${undecoratedModuleName}")
 endfunction()
+
+function(add_module_ll_to_solution undecoratedModuleName)
+	set_target_properties(${undecoratedModuleName}
+        PROPERTIES FOLDER "Modules/${undecoratedModuleName}")
+    set_target_properties(${undecoratedModuleName}_static
+        PROPERTIES FOLDER "Modules/${undecoratedModuleName}")
+endfunction()
     
 function(add_sample_to_solution sampleName)
     	set_target_properties(${sampleName} PROPERTIES FOLDER "AzureIoTGateway_Samples")

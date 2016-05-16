@@ -8,12 +8,16 @@
 #define GW_SOURCE_PROPERTY                  "source"
 #define GW_DEVICENAME_PROPERTY              "deviceName"
 #define GW_DEVICEKEY_PROPERTY               "deviceKey"
+#define GW_DM_OPERATION						"dm_operation"
+
 
 #define GW_SOURCE_BLE_COMMAND               "bleCommand"
 #define GW_SOURCE_BLE_TELEMETRY             "bleTelemetry"
 
 #define GW_IDMAP_MODULE                     "mapping"
 #define GW_IOTHUB_MODULE                    "IoTHubHTTP"
+#define GW_DMHUB_MODULE					    "IoTDMHub"
+#define GW_WORKER_MODULE					"dm_worker"
 
 #define GW_BLE_CONTROLLER_INDEX_PROPERTY    "bleControllerIndex"
 #define GW_TIMESTAMP_PROPERTY               "timestamp"

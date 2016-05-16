@@ -503,7 +503,7 @@ static bool determine_message_direction(const char * source, bool * isC2DMessage
 	bool result; 
 	if (source != NULL)
 	{
-		if (strcmp(source, GW_IOTHUB_MODULE) == 0)
+		if (strcmp(source, GW_DMHUB_MODULE) == 0)
 		{
 			result = true;
 			*isC2DMessage = true;

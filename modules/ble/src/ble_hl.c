@@ -460,7 +460,7 @@ static bool recognize_bus_message(BLE_HL_HANDLE_DATA* handle_data, CONSTMAP_HAND
     if (message_mac != NULL && (strcmp(message_mac, STRING_c_str(handle_data->mac_address)) == 0))
     {
         const char * message_source = ConstMap_GetValue(properties, GW_SOURCE_PROPERTY);
-        if ((message_source != NULL) && (strcmp(message_source, GW_IDMAP_MODULE) == 0))
+        if ((message_source != NULL) && (strcmp(message_source, GW_WORKER_MODULE) == 0))
         {
             result = true; /* recognized */
         }

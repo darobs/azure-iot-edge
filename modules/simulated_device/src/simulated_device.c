@@ -25,6 +25,37 @@ static char msgText[1024];
 
 static void SimulatedDevice_Receive(MODULE_HANDLE moduleHandle, MESSAGE_HANDLE messageHandle)
 {
+
+	if (moduleHandle == NULL || messageHandle == NULL)
+	{
+		LogError("invalid arguments, module=[%p], message=[%p]", moduleHandle, messageHandle);
+	}
+	else
+	{
+		SIMULATEDDEVICE_DATA * moduleData = (SIMULATEDDEVICE_DATA*)moduleHandle;
+
+		CONSTMAP_HANDLE properties = Message_GetProperties(messageHandle);
+		if (properties != NULL)
+		{
+			const char * msgId = ConstMap_GetValue(properties, GW_MAC_ADDRESS_PROPERTY);
+			const char * msgSource = ConstMap_GetValue(properties, GW_SOURCE_PROPERTY);
+			const char * msgTarget = ConstMap_GetValue(properties, GW_TARGET_PROPERTY);
+			if (!(msgId == NULL || msgSource == NULL || msgTarget == NULL))
+			{
+
+				if (strcmp(msgId, moduleData->fakeMacAddress) == 0)
+				{
+					if (strcmp(msgSource, GW_WORKER_MODULE) == 0)
+					{
+						if (strcmp(msgTarget, GW_SOURCE_BLE_COMMAND) == 0)
+						{
+							simulated_device_worker(moduleHandle);
+						}
+					}
+				}
+			}
+		}
+	}
     return;
 }
 
@@ -59,8 +90,6 @@ static int simulated_device_worker(void * user_data)
 	if (user_data != NULL)
 	{
 
-		while (module_data->simulatedDeviceRunning)
-		{
 			MESSAGE_CONFIG newMessageCfg;
 			MAP_HANDLE newProperties = Map_Create(NULL);
 			if (newProperties == NULL)
@@ -78,13 +107,17 @@ static int simulated_device_worker(void * user_data)
 				{
 					LogError("Failed to set source property");
 				}
+				else if (Map_Add(newProperties, GW_CHARACTERISTIC_UUID_PROPERTY, "00002A29-0000-1000-8000-00805F9B34FB") != MAP_OK)
+				{
+					LogError("Failed to set char UUID");
+				}
 				else
 				{
 					newMessageCfg.sourceProperties = newProperties;
 					if ((avgTemperature + additionalTemp) > maxSpeed)
 						additionalTemp = 0.0;
 
-					if (sprintf_s(msgText, sizeof(msgText), "{\"temperature\": %.2f}", avgTemperature + additionalTemp) < 0)
+					if (sprintf_s(msgText, sizeof(msgText), "FAKEY FAKE FAKE") < 0)
 					{
 						LogError("Failed to set message text");
 					}
@@ -104,6 +137,8 @@ static int simulated_device_worker(void * user_data)
 							{
 								LogError("Failed to create new message");
 							}
+							else
+								LogInfo("Sent a message");
 
 							additionalTemp += 1.0;
 							Message_Destroy(newMessage);
@@ -112,8 +147,6 @@ static int simulated_device_worker(void * user_data)
 				}
 				Map_Destroy(newProperties);
 			}
-			ThreadAPI_Sleep(10000);
-		}
 	}
 
 	return 0;
@@ -154,20 +187,7 @@ static MODULE_HANDLE SimulatedDevice_Create(MESSAGE_BUS_HANDLE busHandle, const 
 			{
 				result->fakeMacAddress = newFakeAdress;
 				/* OK to start */
-				/* Create a fake data thread.  */
-				if (ThreadAPI_Create(
-					&(result->simulatedDeviceThread),
-					simulated_device_worker,
-					(void*)result) != THREADAPI_OK)
-				{
-					LogError("ThreadAPI_Create failed");
-					free(result);
-					result = NULL;
-				}
-				else
-				{
-					/* Thread started, module created, all complete.*/
-				}
+				simulated_device_worker(result);
 			}
 
         }

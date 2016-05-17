@@ -6,6 +6,7 @@
 
 #define GW_MAC_ADDRESS_PROPERTY             "macAddress"
 #define GW_SOURCE_PROPERTY                  "source"
+#define GW_TARGET_PROPERTY					"target"
 #define GW_DEVICENAME_PROPERTY              "deviceName"
 #define GW_DEVICEKEY_PROPERTY               "deviceKey"
 #define GW_DM_OPERATION						"dm_operation"

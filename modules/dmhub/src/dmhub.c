@@ -204,6 +204,11 @@ static IOTHUB_CLIENT_RESULT send_dm_message(const char * operation_name, PERSONA
 			Map_Destroy(newProperties);
 			result = IOTHUB_CLIENT_ERROR;
 		}
+		else if (Map_Add(newProperties, GW_TARGET_PROPERTY, GW_IDMAP_MODULE) != MAP_OK)
+		{
+			Map_Destroy(newProperties);
+			result = IOTHUB_CLIENT_ERROR;
+		}
 		else
 		{
 			newMessageConfig.sourceProperties = newProperties;
@@ -571,7 +576,7 @@ static PERSONALITY_PTR PERSONALITY_create(const char* deviceName, const char* de
 			else
 			{
 				//    IOTHUB_CHANNEL_HANDLE IoTHubChannel = IoTHubClient_DM_Open(cs, COAP_TCPIP);
-				if ((result->dmhubHandle = IoTHubClient_DM_Open(cs, COAP_TCPIP)) == NULL)
+				if ((result->dmhubHandle = IoTHubClient_DM_Open(STRING_c_str(cs), COAP_TCPIP)) == NULL)
 				{
 					LogError("unable to IoTHubClient_DM_Open");
 					STRING_delete(result->deviceName);
@@ -737,26 +742,54 @@ static IOTHUB_MESSAGE_HANDLE IoTHubMessage_CreateFromGWMessage(MESSAGE_HANDLE me
 
 static void update_manufacturer(PERSONALITY* personality, const CONSTBUFFER *message)
 {
-	set_device_manufacturer(0, message->buffer);
-	Condition_Post(g_gds->dm_cond);
+	char * newString = (char*)malloc(message->size +1);
+	if (newString != NULL)
+	{
+		strncpy(newString, message->buffer, message->size);
+		newString[message->size] = '\0';
+		set_device_manufacturer(0, newString);
+		Condition_Post(g_gds->dm_cond);
+		free(newString);
+	}
 }
 
 static void update_modelnumber(PERSONALITY* personality, const CONSTBUFFER *message)
 {
-	set_device_modelnumber(0, message->buffer);
-	Condition_Post(g_gds->dm_cond);
+	char * newString = (char*)malloc(message->size + 1);
+	if (newString != NULL)
+	{
+		strncpy(newString, message->buffer, message->size);
+		newString[message->size] = '\0';
+		set_device_modelnumber(0, newString);
+		Condition_Post(g_gds->dm_cond);
+		free(newString);
+	}
 }
 
 static void update_serialnumber(PERSONALITY* personality, const CONSTBUFFER *message)
 {
-	set_device_serialnumber(0, message->buffer);
-	Condition_Post(g_gds->dm_cond);
+	char * newString = (char*)malloc(message->size + 1);
+	if (newString != NULL)
+	{
+		strncpy(newString, message->buffer, message->size);
+		newString[message->size] = '\0';
+		set_device_serialnumber(0, newString);
+		Condition_Post(g_gds->dm_cond);
+		free(newString);
+	}
 }
 
 static void update_firmwareversion(PERSONALITY* personality, const CONSTBUFFER *message)
 {
-	set_device_firmwareversion(0, message->buffer);
-	Condition_Post(g_gds->dm_cond);
+	char * newString = (char*)malloc(message->size + 1);
+	if (newString != NULL)
+	{
+		strncpy(newString, message->buffer, message->size);
+		newString[message->size] = '\0';
+		set_device_firmwareversion(0, newString);
+		Condition_Post(g_gds->dm_cond);
+		free(newString);
+	}
 }
 static void process_dm_message(const char * dm_operation, PERSONALITY* personality, const CONSTBUFFER *message)
 {
@@ -801,10 +834,12 @@ static void dmhub_Receive(MODULE_HANDLE moduleHandle, MESSAGE_HANDLE messageHand
     {
         CONSTMAP_HANDLE properties = Message_GetProperties(messageHandle);
         const char* source = ConstMap_GetValue(properties, SOURCE); /*properties is !=NULL by contract of Message*/
-
+		const char * target = ConstMap_GetValue(properties, GW_TARGET_PROPERTY);
         if (
             (source == NULL) ||
-            (strcmp(source, MAPPING)!=0)
+			(target == NULL) ||
+			(strcmp(source, MAPPING) != 0) ||
+			(strcmp(target, GW_DMHUB_MODULE)!=0)
             )
         {
             /*do nothing, the properties do not contain either "source" or "source":"mapping"*/

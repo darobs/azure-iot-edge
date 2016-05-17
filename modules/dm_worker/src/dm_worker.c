@@ -161,10 +161,10 @@ static void DMWorker_Destroy(MODULE_HANDLE moduleHandle)
 static void publish_device_message(DM_WORKER_DATA * moduleData, const char * msgOperation, CONSTMAP_HANDLE properties)
 {
 	JSON_Object* root = moduleData->root;
-	JSON_Object * deviceOperation = json_object_get_object(root, msgOperation);
-	if (deviceOperation != NULL)
+	JSON_Value * deviceOpValue = json_object_get_value(root, msgOperation);
+	if (deviceOpValue != NULL)
 	{
-		char * serialized = json_serialize_to_string(deviceOperation);
+		char * serialized = json_serialize_to_string(deviceOpValue);
 		if (serialized != NULL)
 		{
 			MAP_HANDLE newProperties = ConstMap_CloneWriteable(properties);
@@ -172,20 +172,25 @@ static void publish_device_message(DM_WORKER_DATA * moduleData, const char * msg
 			{
 				if (Map_AddOrUpdate(newProperties, GW_SOURCE_PROPERTY, GW_WORKER_MODULE) == MAP_OK)
 				{
-					MESSAGE_CONFIG newMessage;
+					if (Map_AddOrUpdate(newProperties, GW_TARGET_PROPERTY, GW_SOURCE_BLE_COMMAND) == MAP_OK)
+					{
+						Map_Delete(newProperties, GW_CHARACTERISTIC_UUID_PROPERTY);
+						MESSAGE_CONFIG newMessage;
 
-					newMessage.size = strlen(serialized);
-					newMessage.source = (const unsigned char*)serialized;
-					newMessage.sourceProperties = newProperties;
-					MESSAGE_HANDLE newBusMessage = Message_Create(&newMessage);
-					if (newBusMessage != NULL)
-					{
-						MessageBus_Publish(moduleData->busHandle, newBusMessage);
+						newMessage.size = strlen(serialized);
+						newMessage.source = (const unsigned char*)serialized;
+						newMessage.sourceProperties = newProperties;
+						MESSAGE_HANDLE newBusMessage = Message_Create(&newMessage);
+						if (newBusMessage != NULL)
+						{
+							MessageBus_Publish(moduleData->busHandle, newBusMessage);
+						}
+						else
+						{
+							LogError("Failed to create a new message");
+						}
 					}
-					else
-					{
-						LogError("Failed to create a new message");
-					}
+
 				}
 				Map_Destroy(newProperties);
 			}
@@ -228,18 +233,21 @@ static void publish_dm_response(DM_WORKER_DATA * moduleData, const char * msgCha
 						{
 							if (Map_AddOrUpdate(newProperties, GW_DM_OPERATION, curName) == MAP_OK)
 							{
-								MESSAGE_BUFFER_CONFIG newMessage;
+								if (Map_AddOrUpdate(newProperties, GW_TARGET_PROPERTY, GW_IDMAP_MODULE ) == MAP_OK)
+								{
+									MESSAGE_BUFFER_CONFIG newMessage;
 
-								newMessage.sourceContent = Message_GetContentHandle(messageHandle);
-								newMessage.sourceProperties = newProperties;
-								MESSAGE_HANDLE newBusMessage = Message_CreateFromBuffer(&newMessage);
-								if (newBusMessage != NULL)
-								{
-									MessageBus_Publish(moduleData->busHandle, newBusMessage);
-								}
-								else
-								{
-									LogError("Failed to create a new message");
+									newMessage.sourceContent = Message_GetContentHandle(messageHandle);
+									newMessage.sourceProperties = newProperties;
+									MESSAGE_HANDLE newBusMessage = Message_CreateFromBuffer(&newMessage);
+									if (newBusMessage != NULL)
+									{
+										MessageBus_Publish(moduleData->busHandle, newBusMessage);
+									}
+									else
+									{
+										LogError("Failed to create a new message");
+									}
 								}
 							}
 						}

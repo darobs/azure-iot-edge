@@ -440,6 +440,11 @@ static void IdentityMap_RepublishD2C(
 				/*Codes_SRS_IDMAP_17_033: [If adding source fails, IdentityMap_Receive shall deallocate all resources and return.]*/
 				LogError("Could not attach source property to message");
 			}
+			else if (Map_AddOrUpdate(newProperties, GW_TARGET_PROPERTY, GW_DMHUB_MODULE) != MAP_OK)
+			{
+				/*Codes_SRS_IDMAP_17_033: [If adding source fails, IdentityMap_Receive shall deallocate all resources and return.]*/
+				LogError("Could not attach source property to message");
+			}
 			else
 			{
 				publish_with_new_properties(newProperties, messageHandle, idModule);
@@ -487,6 +492,11 @@ static void IdentityMap_RepublishC2D(
 				/*Codes_SRS_IDMAP_17_033: [If adding source fails, IdentityMap_Receive shall deallocate all resources and return.]*/
 				LogError("Could not attach source property to message");
 			}
+			else if (Map_AddOrUpdate(newProperties, GW_TARGET_PROPERTY, GW_WORKER_MODULE) != MAP_OK)
+			{
+				/*Codes_SRS_IDMAP_17_033: [If adding source fails, IdentityMap_Receive shall deallocate all resources and return.]*/
+				LogError("Could not attach source property to message");
+			}
 			else
 			{
 				publish_with_new_properties(newProperties, messageHandle, idModule);
@@ -498,17 +508,17 @@ static void IdentityMap_RepublishC2D(
 }
 
 /* returns true if the message should continue to be processed, sets direction */
-static bool determine_message_direction(const char * source, bool * isC2DMessage)
+static bool determine_message_direction(const char * source, const char * target, bool * isC2DMessage)
 {
 	bool result; 
-	if (source != NULL)
+	if (source != NULL && target != NULL)
 	{
-		if (strcmp(source, GW_DMHUB_MODULE) == 0)
+		if ((strcmp(source, GW_DMHUB_MODULE) == 0) && (strcmp(target, GW_IDMAP_MODULE) == 0))
 		{
 			result = true;
 			*isC2DMessage = true;
 		}
-		else if (strcmp(source, GW_IDMAP_MODULE) != 0)
+		else if ((strcmp(source, GW_WORKER_MODULE) == 0) && (strcmp(target, GW_IDMAP_MODULE) == 0))
 		{
 			result = true;
 			*isC2DMessage = false;
@@ -547,8 +557,9 @@ static void IdentityMap_Receive(MODULE_HANDLE moduleHandle, MESSAGE_HANDLE messa
 		CONSTMAP_HANDLE properties = Message_GetProperties(messageHandle);
 
 		const char * source = ConstMap_GetValue(properties, GW_SOURCE_PROPERTY);
+		const char * target = ConstMap_GetValue(properties, GW_TARGET_PROPERTY);
 		bool isC2DMessage;
-		if (determine_message_direction(source, &isC2DMessage))
+		if (determine_message_direction(source, target, &isC2DMessage))
 		{
 			if (isC2DMessage == true)
 			{

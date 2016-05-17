@@ -102,8 +102,6 @@ static int simulated_device_worker(void * user_data)
 							{
 								LogError("Failed to create new message");
 							}
-							else
-								LogInfo("Sent a message");
 
 							additionalTemp += 1.0;
 							Message_Destroy(newMessage);

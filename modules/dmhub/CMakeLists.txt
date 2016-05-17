@@ -35,6 +35,7 @@ add_library(dmhub MODULE
 target_link_libraries(dmhub
     gateway
     iotdm_client  
+    iothub_client
 )
 
 #this builds the dmhub static library
@@ -46,7 +47,10 @@ target_compile_definitions(dmhub_static PRIVATE BUILD_MODULE_TYPE_STATIC)
 target_link_libraries(dmhub_static
     gateway
     iotdm_client
+    iothub_client
 )
+linkSharedUtil(dmhub)
+linkSharedUtil(dmhub_static)
 
 #this builds the dmhub_HL dynamic library (by default it uses IoTHub Module linked statically)
 add_library(dmhub_hl MODULE
@@ -67,15 +71,10 @@ target_link_libraries(dmhub_hl_static
     dmhub_static
 )
 
-linkSharedUtil(dmhub)
-linkSharedUtil(dmhub_static)
+
 linkSharedUtil(dmhub_hl)
 linkSharedUtil(dmhub_hl_static)
 
-linkHttp(dmhub)
-linkHttp(dmhub_static)
-linkHttp(dmhub_hl)
-linkHttp(dmhub_hl_static)
 
 add_module_to_solution(dmhub)
 

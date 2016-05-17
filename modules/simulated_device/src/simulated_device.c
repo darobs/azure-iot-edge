@@ -23,41 +23,6 @@ typedef struct SIMULATEDDEVICE_DATA_TAG
 
 static char msgText[1024];
 
-static void SimulatedDevice_Receive(MODULE_HANDLE moduleHandle, MESSAGE_HANDLE messageHandle)
-{
-
-	if (moduleHandle == NULL || messageHandle == NULL)
-	{
-		LogError("invalid arguments, module=[%p], message=[%p]", moduleHandle, messageHandle);
-	}
-	else
-	{
-		SIMULATEDDEVICE_DATA * moduleData = (SIMULATEDDEVICE_DATA*)moduleHandle;
-
-		CONSTMAP_HANDLE properties = Message_GetProperties(messageHandle);
-		if (properties != NULL)
-		{
-			const char * msgId = ConstMap_GetValue(properties, GW_MAC_ADDRESS_PROPERTY);
-			const char * msgSource = ConstMap_GetValue(properties, GW_SOURCE_PROPERTY);
-			const char * msgTarget = ConstMap_GetValue(properties, GW_TARGET_PROPERTY);
-			if (!(msgId == NULL || msgSource == NULL || msgTarget == NULL))
-			{
-
-				if (strcmp(msgId, moduleData->fakeMacAddress) == 0)
-				{
-					if (strcmp(msgSource, GW_WORKER_MODULE) == 0)
-					{
-						if (strcmp(msgTarget, GW_SOURCE_BLE_COMMAND) == 0)
-						{
-							simulated_device_worker(moduleHandle);
-						}
-					}
-				}
-			}
-		}
-	}
-    return;
-}
 
 static void SimulatedDevice_Destroy(MODULE_HANDLE moduleHandle)
 {
@@ -152,6 +117,41 @@ static int simulated_device_worker(void * user_data)
 	return 0;
 }
 
+static void SimulatedDevice_Receive(MODULE_HANDLE moduleHandle, MESSAGE_HANDLE messageHandle)
+{
+
+	if (moduleHandle == NULL || messageHandle == NULL)
+	{
+		LogError("invalid arguments, module=[%p], message=[%p]", moduleHandle, messageHandle);
+	}
+	else
+	{
+		SIMULATEDDEVICE_DATA * moduleData = (SIMULATEDDEVICE_DATA*)moduleHandle;
+
+		CONSTMAP_HANDLE properties = Message_GetProperties(messageHandle);
+		if (properties != NULL)
+		{
+			const char * msgId = ConstMap_GetValue(properties, GW_MAC_ADDRESS_PROPERTY);
+			const char * msgSource = ConstMap_GetValue(properties, GW_SOURCE_PROPERTY);
+			const char * msgTarget = ConstMap_GetValue(properties, GW_TARGET_PROPERTY);
+			if (!(msgId == NULL || msgSource == NULL || msgTarget == NULL))
+			{
+
+				if (strcmp(msgId, moduleData->fakeMacAddress) == 0)
+				{
+					if (strcmp(msgSource, GW_WORKER_MODULE) == 0)
+					{
+						if (strcmp(msgTarget, GW_SOURCE_BLE_COMMAND) == 0)
+						{
+							simulated_device_worker(moduleHandle);
+						}
+					}
+				}
+			}
+		}
+	}
+	return;
+}
 
 static MODULE_HANDLE SimulatedDevice_Create(MESSAGE_BUS_HANDLE busHandle, const void* configuration)
 {

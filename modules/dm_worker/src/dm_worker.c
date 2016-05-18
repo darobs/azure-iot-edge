@@ -288,8 +288,12 @@ static void DMWorker_Receive(MODULE_HANDLE moduleHandle, MESSAGE_HANDLE messageH
 				{
 					if (strcmp(msgSource, GW_IDMAP_MODULE) == 0)
 					{
-						const char * msgOperation = ConstMap_GetValue(properties, GW_DM_OPERATION);
-						publish_device_message(moduleData, msgOperation, properties);
+						const char * target = ConstMap_GetValue(properties, GW_TARGET_PROPERTY);
+						if (target != NULL && strcmp(target, GW_WORKER_MODULE))
+						{
+							const char * msgOperation = ConstMap_GetValue(properties, GW_DM_OPERATION);
+							publish_device_message(moduleData, msgOperation, properties);
+						}
 					}
 					else if (strcmp(msgSource, GW_SOURCE_BLE_TELEMETRY) == 0)
 					{

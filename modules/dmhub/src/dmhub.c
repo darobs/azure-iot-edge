@@ -384,9 +384,9 @@ static void dmhub_set_callbacks()
 	d_obj->device_reboot_execute_callback = do_reboot;
 	d_obj->device_factoryreset_execute_callback = do_factory_reset;
 	d_obj->device_manufacturer_read_callback = do_manufacturer_read;
-	d_obj->device_modelnumber_read_callback = do_modelnumber_read;
-	d_obj->device_serialnumber_read_callback = do_serialnumber_read;
-	d_obj->device_firmwareversion_read_callback = do_firmwareversion_read;
+	//d_obj->device_modelnumber_read_callback = do_modelnumber_read;
+	//d_obj->device_serialnumber_read_callback = do_serialnumber_read;
+	//d_obj->device_firmwareversion_read_callback = do_firmwareversion_read;
 
 	object_config *c_obj = get_config_object(0);
 	c_obj->config_apply_execute_callback = do_apply_config;

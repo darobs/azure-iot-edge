@@ -327,7 +327,7 @@ complexity of the content based filter.
 Conclusion
 -----------
 
-There is no need to implement [Proposol 2](#header) to implement a first class 
+There is no need to implement [Proposal 2](#header) to implement a first class 
 DM client experience. While any improvements made to the MessageBus 
 implementation would make the design of a gateway easier, I have been able to 
 resolve the issues I had during the spike using the simple content based filter 

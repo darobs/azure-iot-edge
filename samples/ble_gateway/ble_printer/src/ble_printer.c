@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft. All rights reserved.
+﻿// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 #include <stdlib.h>
@@ -16,6 +16,7 @@
 #include "azure_c_shared_utility/xlogging.h"
 #include "azure_c_shared_utility/constmap.h"
 #include "azure_c_shared_utility/constbuffer.h"
+#include "azure_c_shared_utility/strings.h"
 
 #include "module.h"
 #include "message.h"
@@ -24,11 +25,16 @@
 #include "ble_printer.h"
 #include "messageproperties.h"
 
-typedef void(*MESSAGE_PRINTER)(const char* name, const char* timestamp, const CONSTBUFFER* buffer);
+typedef STRING_HANDLE(*MESSAGE_PRINTER)(const char* name, const char* timestamp, const CONSTBUFFER* buffer);
 
-static void print_string(const char* name, const char* timestamp, const CONSTBUFFER* buffer);
-static void print_temperature(const char* name, const char* timestamp, const CONSTBUFFER* buffer);
-static void print_default(const char* name, const char* timestamp, const CONSTBUFFER* buffer);
+static STRING_HANDLE print_string(const char* name, const char* timestamp, const CONSTBUFFER* buffer);
+static STRING_HANDLE print_temperature(const char* name, const char* timestamp, const CONSTBUFFER* buffer);
+static STRING_HANDLE print_default(const char* name, const char* timestamp, const CONSTBUFFER* buffer);
+
+typedef struct BLE_JSON_CONVERT_TAG
+{
+    BROKER_HANDLE broker;
+} BLE_JSON_CONVERT;
 
 typedef struct DIPATCH_ENTRY_TAG
 {
@@ -86,9 +92,13 @@ size_t g_dispatch_entries_length = sizeof(g_dispatch_entries) / sizeof(g_dispatc
 
 MODULE_HANDLE BLEPrinter_Create(BROKER_HANDLE broker, const void* configuration)
 {
-    (void)broker;
+    BLE_JSON_CONVERT* ble_json_convert = (BLE_JSON_CONVERT*)malloc(sizeof(BLE_JSON_CONVERT));
+    if (ble_json_convert != NULL)
+    {
+        ble_json_convert->broker = broker;
+    }
     (void)configuration;
-    return (MODULE_HANDLE)0x42;
+    return (MODULE_HANDLE)ble_json_convert;
 }
 
 void* BLEPrinter_ParseConfigurationFromJson(const char* configuration)
@@ -105,7 +115,7 @@ void BLEPrinter_FreeConfiguration(void * configuration)
 
 void BLEPrinter_Receive(MODULE_HANDLE module, MESSAGE_HANDLE message)
 {
-    (void)module;
+    BLE_JSON_CONVERT* ble_json_convert = (BLE_JSON_CONVERT*)module;
     if (message != NULL)
     {
         CONSTMAP_HANDLE props = Message_GetProperties(message);
@@ -116,6 +126,7 @@ void BLEPrinter_Receive(MODULE_HANDLE module, MESSAGE_HANDLE message)
             {
                 //const char* ble_controller_id = ConstMap_GetValue(props, GW_BLE_CONTROLLER_INDEX_PROPERTY);
                 //const char* mac_address_str = ConstMap_GetValue(props, GW_MAC_ADDRESS_PROPERTY);
+                STRING_HANDLE message_body;
                 const char* timestamp = ConstMap_GetValue(props, GW_TIMESTAMP_PROPERTY);
                 const char* characteristic_uuid = ConstMap_GetValue(props, GW_CHARACTERISTIC_UUID_PROPERTY);
                 const CONSTBUFFER* buffer = Message_GetContent(message);
@@ -130,7 +141,7 @@ void BLEPrinter_Receive(MODULE_HANDLE module, MESSAGE_HANDLE message)
                                 g_dispatch_entries[i].characteristic_uuid
                             ) == 0)
                         {
-                            g_dispatch_entries[i].message_printer(
+                            message_body = g_dispatch_entries[i].message_printer(
                                 g_dispatch_entries[i].name,
                                 timestamp,
                                 buffer
@@ -142,8 +153,26 @@ void BLEPrinter_Receive(MODULE_HANDLE module, MESSAGE_HANDLE message)
                     if (i == g_dispatch_entries_length)
                     {
                         // dispatch to default printer
-                        print_default(characteristic_uuid, timestamp, buffer);
+                        message_body = print_default(characteristic_uuid, timestamp, buffer);
                     }
+
+                    if (message_body != NULL)
+                    {
+                        MESSAGE_CONFIG new_message_config =
+                        {
+                            STRING_length(message_body) + 1,
+                            STRING_c_str(message_body),
+                            props
+                        };
+                        MESSAGE_HANDLE new_message = Message_Create(&new_message_config);
+                        if (new_message != NULL)
+                        {
+                            Broker_Publish(ble_json_convert->broker, module, new_message);
+                        }
+
+                        STRING_delete(message_body);
+                    }
+
                 }
                 else
                 {
@@ -164,8 +193,7 @@ void BLEPrinter_Receive(MODULE_HANDLE module, MESSAGE_HANDLE message)
 
 void BLEPrinter_Destroy(MODULE_HANDLE module)
 {
-    // Nothing to do here
-    (void)module;
+    free(module);
 }
 
 static const MODULE_API_1 Module_GetApi_Impl =
@@ -187,10 +215,11 @@ MODULE_EXPORT const MODULE_API* Module_GetApi(MODULE_API_VERSION gateway_api_ver
     return (const MODULE_API*)&Module_GetApi_Impl;
 }
 
-static void print_string(const char* name, const char* timestamp, const CONSTBUFFER* buffer)
+static STRING_HANDLE print_string(const char* name, const char* timestamp, const CONSTBUFFER* buffer)
 {
-    printf("[%s] %s: %.*s\r\n", timestamp, name, (int)buffer->size, buffer->buffer);
-    (void)fflush(stdout);
+    STRING_HANDLE result = STRING_construct_sprintf("{\"timestamp\":\"%s\",\"%s\":\"%.*s\"}", 
+        timestamp, name, (int)buffer->size, buffer->buffer);
+    return result;
 }
 
 /**
@@ -217,30 +246,35 @@ static void sensortag_temp_convert(
     *tAmb = t * SCALE_LSB;
 }
 
-static void print_temperature(const char* name, const char* timestamp, const CONSTBUFFER* buffer)
+static STRING_HANDLE print_temperature(const char* name, const char* timestamp, const CONSTBUFFER* buffer)
 {
+    STRING_HANDLE result = NULL;
     if (buffer->size == 4)
     {
         uint16_t* temps = (uint16_t *)buffer->buffer;
         float ambient, object;
         sensortag_temp_convert(temps[0], temps[1], &ambient, &object);
-        printf("[%s] %s: (%f, %f)\r\n",
+        result = STRING_construct_sprintf("{\"timestamp\":\"%s\",\"%s.ambient\":\"%f\",\"%s.object\":\"%f\"}",
             timestamp,
             name,
             ambient,
+            name,
             object
         );
-        (void)fflush(stdout);
     }
+    return result;
 }
 
 static void print_default(const char* name, const char* timestamp, const CONSTBUFFER* buffer)
 {
-    printf("[%s] %s: ", timestamp, name);
+    STRING_HANDLE result = STRING_construct_sprintf("{\"timestamp\":\"%s\",\"%s\":\"",
+        timestamp, name);
+    char hex_char[4]
     for (size_t i = 0; i < buffer->size; ++i)
     {
-        printf("%02X ", buffer->buffer[i]);
+        sprintf(hex_char, "%02X ", buffer->buffer[i]);
+        STRING_concat(result, hex_char);
     }
-    printf("\r\n");
-    (void)fflush(stdout);
+    STRING_concat(result, "\"}");
+    return result;
 }

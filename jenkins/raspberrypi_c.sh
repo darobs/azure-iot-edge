@@ -6,7 +6,7 @@
 # Tested on RPi2 debian verion 7.8
 
 install_root="$HOME" 
-build_root=$(cd "$(dirname "$0")/.." && pwd) 
+build_root=$(cd "$(dirname "$0")/../v1" && pwd) 
 cd $build_root
 
 # ----------------------------------------------------------------------------- 
